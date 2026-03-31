@@ -15,8 +15,9 @@ export class WorkExperience {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // comment: many experiences → one user
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, (user) => user.workExperience, {
+    onDelete: 'CASCADE', // comment: maintain data integrity
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 

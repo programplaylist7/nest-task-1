@@ -14,6 +14,12 @@ async function bootstrap() {
   // comment: serve uploads folder
   app.use('/uploads', express.static('uploads'));
 
+  // comment: enable CORS with env config
+  app.enableCors({
+    origin: process.env.FRONTEND_URL, // ✅ from .env
+    credentials: true, // ✅ REQUIRED for cookies
+  });
+
   const port = process.env.PORT ?? 3000;
   await app.listen(port, () => {
     console.log(`app is started on port: ${port}`);

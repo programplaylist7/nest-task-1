@@ -14,9 +14,10 @@ import {
   ExperienceItemDto,
   SignupStep2Dto,
 } from './dto/signup-step2.dto';
-import { JwtService } from '@nestjs/jwt';
 import { EmailService } from 'src/email/email.service';
 import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
+import { Request, Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -54,7 +55,7 @@ export class AuthService {
         return {
           exists: true,
           verified: true,
-          message: 'Email already registered and verified',
+          message: 'Email already registered and verified Please Login',
         };
       }
 
@@ -62,7 +63,8 @@ export class AuthService {
       return {
         exists: true,
         verified: false,
-        message: 'Email exists but not verified. Please verify your email',
+        message:
+          'Email exists but not verified. Go To Login for verify Your Email',
       };
     }
 
@@ -241,8 +243,14 @@ export class AuthService {
     if (user.role === 'admin') {
       // comment: fetch all candidate users with their profile
       const candidates = await this.userRepo.find({
-        where: { role: 'candidate' }, // ✅ only candidates
-        relations: ['userDetails'], // ✅ include profile
+        where: { role: 'candidate' },
+
+        // comment: load ALL required relations
+        relations: {
+          userDetails: true,
+          education: true, // ✅ add this
+          workExperience: true, // ✅ add this
+        },
       });
 
       // comment: current admin user (without relations needed)
@@ -257,10 +265,14 @@ export class AuthService {
       });
 
       return {
-        success: true,
-        message: 'Admin login successful',
-        admin: adminUser, // ✅ current admin
-        candidates: candidates, // ✅ all candidates with details
+        token,
+        data: {
+          admin: adminUser, // ✅ current admin,
+          role: 'admin',
+          candidates: candidates, // ✅ all candidates with details,
+          success: true,
+          message: 'Admin login successful',
+        },
       };
     }
 
@@ -270,7 +282,11 @@ export class AuthService {
     if (user.role === 'candidate') {
       const updatedUser = await this.userRepo.findOne({
         where: { id: user.id },
-        relations: ['userDetails'],
+        relations: {
+          userDetails: true,
+          education: true, // ✅ add this
+          workExperience: true, // ✅ add this
+        },
       });
 
       // comment: ensure user exists
@@ -303,15 +319,89 @@ export class AuthService {
     });
 
     return {
-      success: true,
-      message: 'Login successful',
       token,
-      user: {
+      data: {
         id: user.id,
         email: user.email,
         role: user.role,
-        details: userWithDetails.userDetails, // ✅ safe
+        user: userWithDetails, // ✅ safe,
+        success: true,
+        message: 'Login successful',
       },
     };
+  }
+
+  async refresh(req: Request, res: Response) {
+    try {
+      // comment: get token from cookie
+      const token = req.cookies?.token;
+
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: 'No token found',
+        });
+      }
+
+      // comment: verify token
+      const decoded = this.jwtService.verify(token);
+
+      const user = await this.userRepo.findOne({
+        where: { id: decoded.userId },
+      });
+
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid user',
+        });
+      }
+
+      // ================= ADMIN =================
+      if (user.role === 'admin') {
+        const candidates = await this.userRepo.find({
+          where: { role: 'candidate' },
+          relations: {
+            userDetails: true,
+            education: true,
+            workExperience: true,
+          },
+        });
+
+        return res.json({
+          data: {
+            role: 'admin',
+            admin: user,
+            candidates,
+            success: true,
+          },
+        });
+      }
+
+      // ================= CANDIDATE =================
+      if (user.role === 'candidate') {
+        const candidate = await this.userRepo.findOne({
+          where: { id: user.id },
+          relations: {
+            userDetails: true,
+            education: true,
+            workExperience: true,
+          },
+        });
+
+        return res.json({
+          data: {
+            success: true,
+            role: 'candidate',
+            user: candidate,
+          },
+        });
+      }
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired or invalid',
+      });
+    }
   }
 }

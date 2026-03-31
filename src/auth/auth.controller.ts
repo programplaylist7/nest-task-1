@@ -8,6 +8,7 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -17,7 +18,7 @@ import type { Express } from 'express';
 import { SignupStep2Dto } from './dto/signup-step2.dto';
 import { LoginDto } from './dto/login.dto';
 import { Res } from '@nestjs/common';
-import type { Response } from 'express'; // ✅ FIXED: type-only import
+import type { Request, Response } from 'express';
 
 @Controller('auth')
 export class AuthController {
@@ -93,21 +94,43 @@ export class AuthController {
   }
 
   // comment: login API
+
   @Post('login')
-  async login(
-    @Body() data: LoginDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async login(@Body() data: LoginDto, @Res() res: Response) {
     const result = await this.service.login(data);
 
-    // comment: set cookie with token
+    // comment: set JWT token in httpOnly cookie
     res.cookie('token', result.token, {
-      httpOnly: true, // ✅ prevents JS access (security)
-      secure: false, // ⚠️ set true in production (HTTPS)
-      sameSite: 'lax', // helps prevent CSRF
+      httpOnly: true, // ✅ secure (not accessible via JS)
+      secure: false, // ⚠️ true in production (https)
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
-    return result;
+    // comment: send response without token in body
+    return res.json({
+      data: result.data,
+    });
+  }
+
+  @Get('refresh')
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    return this.service.refresh(req, res);
+  }
+
+  @Get('logout')
+  logout(@Res() res: Response) {
+    // comment: clear cookie (same name used in login)
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: false, // comment: true in production (HTTPS)
+      sameSite: 'lax',
+    });
+
+    // comment: send response
+    return res.status(200).json({
+      success: true,
+      message: 'Logged out successfully',
+    });
   }
 }

@@ -16,7 +16,9 @@ export class Education {
   id: number;
 
   // comment: many education records → one user
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, (user) => user.education, {
+    onDelete: 'CASCADE', // comment: delete education if user deleted
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 

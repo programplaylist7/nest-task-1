@@ -30,4 +30,8 @@ export class CountryService {
 
     return this.countryRepo.save(country);
   }
+
+  async findAll() {
+    return this.countryRepo.find();
+  }
 }

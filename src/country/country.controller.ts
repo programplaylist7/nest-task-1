@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { CountryService } from './country.service';
 import { CreateCountryDto } from './dto/create-country.dto';
 
@@ -10,5 +10,10 @@ export class CountryController {
   @Post()
   create(@Body() body: CreateCountryDto) {
     return this.service.create(body);
+  }
+
+  @Get()
+  async getAllCountries() {
+    return this.service.findAll();
   }
 }
