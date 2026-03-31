@@ -94,7 +94,7 @@ export class AuthService {
       where: { email: data.email },
     });
 
-    if (exist) {
+    if (exist && !(exist.is_verified)) {
       throw new BadRequestException('Email already exists');
     }
 
