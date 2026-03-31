@@ -58,14 +58,6 @@ export class AuthService {
           message: 'Email already registered and verified Please Login',
         };
       }
-
-      // comment: user exists but not verified
-      return {
-        exists: true,
-        verified: false,
-        message:
-          'Email exists but not verified. Go To Login for verify Your Email',
-      };
     }
 
     // comment: email not found
@@ -86,7 +78,7 @@ export class AuthService {
       email: user.email,
     });
 
-    const link = `http://localhost:5000/auth/verify-email?token=${token}`;
+    const link = `process.env.FRONTEND_URL/auth/verify-email?token=${token}`;
     await this.emailService.sendVerificationEmail(user.email, link);
   }
 
